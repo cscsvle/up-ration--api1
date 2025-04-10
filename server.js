@@ -5,10 +5,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get("/", async (req, res) => {
-  const { number, district } = req.query;
+  const { number } = req.query;
 
-  if (!number || !district) {
-    return res.status(400).json({ error: "कृपया number और district दोनों दें।" });
+  if (!number) {
+    return res.status(400).json({ error: "कृपया राशन कार्ड नंबर दें।" });
   }
 
   const url = "https://nfsa.gov.in/public/frmPublicGetMyRCDetails.aspx";
@@ -27,7 +27,6 @@ app.get("/", async (req, res) => {
     formData.append("__EVENTVALIDATION", eventvalidation);
     formData.append("ddlState", "33"); // UP
     formData.append("txtRationCard", number);
-    formData.append("txtDistrictName", district);
     formData.append("btnSearch", "Search");
 
     const { data: resultPage } = await axios.post(url, formData.toString(), {
@@ -39,8 +38,8 @@ app.get("/", async (req, res) => {
     const $$ = cheerio.load(resultPage);
     const table = $$("#ctl00_ContentPlaceHolder1_gvRCDtls");
 
-    if (!table || table.length === 0) {
-      return res.json({ error: "डाटा निकालने में दिक्कत आई" });
+    if (table.length === 0) {
+      return res.json({ error: "राशन कार्ड की जानकारी नहीं मिली।" });
     }
 
     const rows = table.find("tr").slice(1);
@@ -58,11 +57,10 @@ app.get("/", async (req, res) => {
 
     res.json({
       राशन_कार्ड_संख्या: number,
-      जिला: district,
       सदस्य: members,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Scraping error:", err.message);
     res.json({ error: "डाटा निकालने में दिक्कत आई" });
   }
 });

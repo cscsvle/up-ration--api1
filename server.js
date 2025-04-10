@@ -31,3 +31,27 @@ app.get("/", async (req, res) => {
     const $ = cheerio.load(response.data);
 
     const cardholderName = $("#ctl00_ContentPlaceHolder1_gvDetails_lbl_Name_0").text().trim();
+    const memberNames = [];
+
+    $("#ctl00_ContentPlaceHolder1_gvFamilyDetails td:nth-child(2)").each((i, el) => {
+      memberNames.push($(el).text().trim());
+    });
+
+    if (!cardholderName || memberNames.length === 0) {
+      return res.json({ error: "डाटा निकालने में दिक्कत आई" });
+    }
+
+    res.json({
+      rationCardNumber: number,
+      district,
+      name: cardholderName,
+      members: memberNames
+    });
+  } catch (err) {
+    console.error("Error while scraping:", err.message);
+    res.status(500).json({ error: "सर्वर में कोई दिक्कत आ गई" });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server

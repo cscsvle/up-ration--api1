@@ -13,7 +13,7 @@ app.get("/", async (req, res) => {
   }
 
   try {
-    const url = https://fcs.up.gov.in/Food/citizen/DisplayAll_RationCard.aspx?ID=${number}&DistName=${district};
+    const url = 'https://fcs.up.gov.in/Food/citizen/DisplayAll_RationCard.aspx?ID=${number}&DistName=${district}';
     const response = await axios.get(url);
     const $ = cheerio.load(response.data);
 

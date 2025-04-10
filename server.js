@@ -21,7 +21,7 @@ app.get("/", async (req, res) => {
     const members = [];
 
     $("#ctl00_ContentPlaceHolder1_gvfamily tr").each((i, row) => {
-      if (i === 0) return; // Skip header row
+      if (i === 0) return;
       const cols = $(row).find("td");
       const memberName = $(cols[1]).text().trim();
       if (memberName) members.push(memberName);

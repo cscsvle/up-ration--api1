@@ -1,57 +1,72 @@
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
-
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 app.get("/", async (req, res) => {
   const { number, district } = req.query;
 
   if (!number || !district) {
-    return res.status(400).json({ error: "कृपया number और district दोनों भेजें" });
+    return res.status(400).json({ error: "कृपया number और district दोनों दें।" });
   }
 
+  const url = "https://nfsa.gov.in/public/frmPublicGetMyRCDetails.aspx";
+
   try {
+    const { data: html } = await axios.get(url);
+    const $ = cheerio.load(html);
+
+    const viewstate = $("#__VIEWSTATE").val();
+    const eventvalidation = $("#__EVENTVALIDATION").val();
+    const viewstategenerator = $("#__VIEWSTATEGENERATOR").val();
+
     const formData = new URLSearchParams();
-    formData.append("ddl_dist_name", district);
-    formData.append("txt_rc_no", number);
-    formData.append("btn_submit", "Submit");
+    formData.append("__VIEWSTATE", viewstate);
+    formData.append("__VIEWSTATEGENERATOR", viewstategenerator);
+    formData.append("__EVENTVALIDATION", eventvalidation);
+    formData.append("ddlState", "33"); // UP
+    formData.append("txtRationCard", number);
+    formData.append("txtDistrictName", district);
+    formData.append("btnSearch", "Search");
 
-    const response = await axios.post(
-      "https://nfsa.gov.in/public/frmPublicGetMyRCDetails.aspx",
-      formData,
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        }
-      }
-    );
-
-    const $ = cheerio.load(response.data);
-
-    const cardholderName = $("#ctl00_ContentPlaceHolder1_gvDetails_lbl_Name_0").text().trim();
-    const memberNames = [];
-
-    $("#ctl00_ContentPlaceHolder1_gvFamilyDetails td:nth-child(2)").each((i, el) => {
-      memberNames.push($(el).text().trim());
+    const { data: resultPage } = await axios.post(url, formData.toString(), {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
     });
 
-    if (!cardholderName || memberNames.length === 0) {
+    const $$ = cheerio.load(resultPage);
+    const table = $$("#ctl00_ContentPlaceHolder1_gvRCDtls");
+
+    if (!table || table.length === 0) {
       return res.json({ error: "डाटा निकालने में दिक्कत आई" });
     }
 
+    const rows = table.find("tr").slice(1);
+    const members = [];
+
+    rows.each((i, row) => {
+      const cols = $$(row).find("td");
+      const name = $$(cols[1]).text().trim();
+      const relation = $$(cols[2]).text().trim();
+      const age = $$(cols[3]).text().trim();
+      const gender = $$(cols[4]).text().trim();
+
+      members.push({ name, relation, age, gender });
+    });
+
     res.json({
-      rationCardNumber: number,
-      district,
-      name: cardholderName,
-      members: memberNames
+      राशन_कार्ड_संख्या: number,
+      जिला: district,
+      सदस्य: members,
     });
   } catch (err) {
-    console.error("Error while scraping:", err.message);
-    res.status(500).json({ error: "सर्वर में कोई दिक्कत आ गई" });
+    console.error(err);
+    res.json({ error: "डाटा निकालने में दिक्कत आई" });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server
+app.listen(PORT, () => {
+  console.log('Server is running on port ${PORT})';
+});
